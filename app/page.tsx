@@ -9,6 +9,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState("");
+  const [transcriptionRating, setTranscriptionRating] = useState(0);
+  const [answerRating, setAnswerRating] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -149,6 +153,10 @@ export default function Home() {
     setTranscript("");
     setResponse("");
     setError("");
+    setTranscriptionRating(0);
+    setAnswerRating(0);
+    setFeedback("");
+    setFeedbackSubmitted(false);
   }
 
   return (
@@ -163,14 +171,8 @@ export default function Home() {
           <div>
             <div className="brandName">Balochi AI</div>
             <div className="brandSub">Voice Assistant</div>
+            <div className="brandCreator">Bakhteyar Ghafoor</div>
           </div>
-        </div>
-
-        <div className="developer">
-          Built by{" "}
-          <span className="developerName">
-            Bakhteyar Ghafoor
-          </span>
         </div>
       </nav>
 
@@ -185,11 +187,6 @@ export default function Home() {
           <span>Get intelligent answers.</span>
         </h1>
 
-        <p className="heroText">
-          A voice-powered Balochi AI assistant that understands
-          your speech, converts it into text, and responds naturally
-          in Balochi.
-        </p>
       </section>
 
       <section className="assistantCard">
@@ -386,31 +383,91 @@ export default function Home() {
         </section>
       )}
 
-      <section className="features">
-        <div className="featureCard">
-          <div className="featureIcon">🎙</div>
-          <h3>Balochi Speech</h3>
-          <p>
-            Speak naturally using your microphone.
-          </p>
-        </div>
+      {(transcript || response) && (
+        <section className="feedbackSection">
+          <div className="feedbackCard">
+            <h3>Quick Feedback</h3>
+            <p>Help us improve the transcription and answer.</p>
 
-        <div className="featureCard">
-          <div className="featureIcon">◈</div>
-          <h3>AI Transcription</h3>
-          <p>
-            Powered by a custom Balochi Whisper model.
-          </p>
-        </div>
+            <div className="feedbackRow">
+              <span>Transcription</span>
+              <div className="feedbackStars">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => {
+                      setTranscriptionRating(star);
+                      setFeedbackSubmitted(false);
+                    }}
+                    className={
+                      star <= transcriptionRating
+                        ? "feedbackStar activeFeedbackStar"
+                        : "feedbackStar"
+                    }
+                    aria-label={`Rate transcription ${star} out of 5`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="featureCard">
-          <div className="featureIcon">✦</div>
-          <h3>Smart Answers</h3>
-          <p>
-            Receive natural Balochi responses powered by AI.
-          </p>
-        </div>
-      </section>
+            <div className="feedbackRow">
+              <span>AI Answer</span>
+              <div className="feedbackStars">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => {
+                      setAnswerRating(star);
+                      setFeedbackSubmitted(false);
+                    }}
+                    className={
+                      star <= answerRating
+                        ? "feedbackStar activeFeedbackStar"
+                        : "feedbackStar"
+                    }
+                    aria-label={`Rate AI answer ${star} out of 5`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <textarea
+              value={feedback}
+              onChange={(e) => {
+                setFeedback(e.target.value);
+                setFeedbackSubmitted(false);
+              }}
+              placeholder="Optional comment..."
+              rows={3}
+            />
+
+            <button
+              className="feedbackSubmit"
+              type="button"
+              disabled={
+                transcriptionRating === 0 &&
+                answerRating === 0 &&
+                !feedback.trim()
+              }
+              onClick={() => setFeedbackSubmitted(true)}
+            >
+              Submit Feedback
+            </button>
+
+            {feedbackSubmitted && (
+              <div className="feedbackThanks">
+                Thank you for your feedback.
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <footer>
         <div className="footerLogo">
@@ -530,14 +587,10 @@ export default function Home() {
           margin-top: 2px;
         }
 
-        .developer {
+        .brandCreator {
           color: #94a3b8;
-          font-size: 14px;
-        }
-
-        .developerName {
-          color: #ffffff;
-          font-weight: 700;
+          font-size: 11px;
+          margin-top: 3px;
         }
 
         .hero {
@@ -579,14 +632,6 @@ export default function Home() {
           -webkit-background-clip: text;
           background-clip: text;
           color: transparent;
-        }
-
-        .heroText {
-          color: #9caabd;
-          font-size: 18px;
-          line-height: 1.7;
-          max-width: 680px;
-          margin: 24px auto 0;
         }
 
         .assistantCard {
@@ -1026,46 +1071,105 @@ export default function Home() {
           border: 1px solid rgba(45, 212, 191, 0.13);
         }
 
-        .features {
-          max-width: 1000px;
-          margin: 100px auto 0;
+        .feedbackSection {
+          max-width: 720px;
+          margin: 70px auto 0;
           padding: 0 24px;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 18px;
           position: relative;
           z-index: 2;
         }
 
-        .featureCard {
-          padding: 26px;
+        .feedbackCard {
+          padding: 24px;
           border-radius: 20px;
           background: rgba(15, 27, 44, 0.42);
           border: 1px solid rgba(148, 163, 184, 0.1);
         }
 
-        .featureIcon {
-          width: 48px;
-          height: 48px;
-          border-radius: 14px;
-          background: rgba(99, 102, 241, 0.09);
+        .feedbackCard h3 {
+          margin: 0;
+          font-size: 18px;
+        }
+
+        .feedbackCard > p {
+          margin: 7px 0 20px;
+          color: #77889e;
+          font-size: 13px;
+        }
+
+        .feedbackRow {
           display: flex;
           align-items: center;
-          justify-content: center;
-          font-size: 23px;
-          margin-bottom: 17px;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 10px 0;
         }
 
-        .featureCard h3 {
-          margin: 0;
-          font-size: 16px;
-        }
-
-        .featureCard p {
-          margin: 9px 0 0;
-          color: #77889e;
-          line-height: 1.6;
+        .feedbackRow > span {
           font-size: 13px;
+          color: #cbd5e1;
+        }
+
+        .feedbackStars {
+          display: flex;
+          gap: 3px;
+        }
+
+        .feedbackStar {
+          border: none;
+          background: transparent;
+          color: #475569;
+          font-size: 24px;
+          cursor: pointer;
+          padding: 2px;
+        }
+
+        .feedbackStar:hover,
+        .activeFeedbackStar {
+          color: #facc15;
+        }
+
+        .feedbackCard textarea {
+          width: 100%;
+          margin-top: 14px;
+          padding: 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          background: rgba(255, 255, 255, 0.02);
+          color: #f8fafc;
+          font-family: inherit;
+          resize: vertical;
+          outline: none;
+        }
+
+        .feedbackCard textarea::placeholder {
+          color: #64748b;
+        }
+
+        .feedbackSubmit {
+          margin-top: 12px;
+          border: none;
+          border-radius: 10px;
+          padding: 10px 16px;
+          background: linear-gradient(
+            90deg,
+            #6366f1,
+            #14b8a6
+          );
+          color: white;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .feedbackSubmit:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        .feedbackThanks {
+          margin-top: 12px;
+          color: #86efac;
+          font-size: 12px;
         }
 
         footer {
@@ -1153,20 +1257,12 @@ export default function Home() {
             padding: 20px;
           }
 
-          .developer {
-            display: none;
-          }
-
           .hero {
             margin-top: 40px;
           }
 
           .hero h1 {
             letter-spacing: -1px;
-          }
-
-          .heroText {
-            font-size: 15px;
           }
 
           .assistantCard {
@@ -1183,9 +1279,15 @@ export default function Home() {
             font-size: 10px;
           }
 
-          .features {
-            grid-template-columns: 1fr;
-            margin-top: 70px;
+          .feedbackSection {
+            margin-top: 55px;
+            padding: 0 15px;
+          }
+
+          .feedbackRow {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 6px;
           }
 
           .conversation {
