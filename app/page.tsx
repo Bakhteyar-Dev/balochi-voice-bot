@@ -3,46 +3,72 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [audio, setAudio] = useState<File | null>(null);
-  const [transcript, setTranscript] = useState("");
+  const [message, setMessage] = useState("");
   const [response, setResponse] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function askGemini() {
+    if (!message.trim()) return;
+
+    setLoading(true);
+    setResponse("");
+
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: message,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.response) {
+      setResponse(data.response);
+    } else {
+      setResponse(data.error || "Something went wrong.");
+    }
+
+    setLoading(false);
+  }
 
   return (
     <main style={{ maxWidth: 700, margin: "50px auto", padding: 20 }}>
       <h1>Balochi Voice Assistant</h1>
 
-      <p>Upload a Balochi audio recording.</p>
+      <p>Type a message to test Gemini first.</p>
 
-      <input
-        type="file"
-        accept="audio/*"
-        onChange={(e) => setAudio(e.target.files?.[0] || null)}
+      <textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Type here..."
+        rows={5}
+        style={{ width: "100%", padding: 10 }}
       />
 
       <br />
       <br />
 
-      <button
-        onClick={() => {
-          setTranscript("Audio selected: " + (audio?.name || ""));
-          setResponse("Gemini response will appear here later.");
-        }}
-        disabled={!audio}
-      >
-        Test Upload
+      <button onClick={askGemini} disabled={loading}>
+        {loading ? "Thinking..." : "Ask Gemini"}
       </button>
-
-      {transcript && (
-        <>
-          <h3>Transcription</h3>
-          <p>{transcript}</p>
-        </>
-      )}
 
       {response && (
         <>
           <h3>Assistant</h3>
-          <p>{response}</p>
+          <div
+            dir="rtl"
+            style={{
+              marginTop: 10,
+              padding: 15,
+              border: "1px solid #ccc",
+              borderRadius: 8,
+            }}
+          >
+            {response}
+          </div>
         </>
       )}
     </main>
