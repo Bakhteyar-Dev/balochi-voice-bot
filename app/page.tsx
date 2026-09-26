@@ -1,12 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function Home() {
   const [audio, setAudio] = useState<File | null>(null);
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      streamRef.current = stream;
+
+      const recorder = new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+
+        const recordedFile = new File(
+          [blob],
+          "balochi-recording.webm",
+          {
+            type: blob.type || "audio/webm",
+          }
+        );
+
+        setAudio(recordedFile);
+
+        streamRef.current?.getTracks().forEach((track) => {
+          track.stop();
+        });
+
+        streamRef.current = null;
+      };
+
+      recorder.start();
+      setRecording(true);
+    } catch (error) {
+      console.error(error);
+      alert(
+        "Microphone access was denied. Please allow microphone access in your browser."
+      );
+    }
+  }
+
+  function stopRecording() {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+    }
+
+    setRecording(false);
+  }
 
   async function handleAudio() {
     if (!audio) return;
@@ -16,7 +83,6 @@ export default function Home() {
     setResponse("");
 
     try {
-      // 1. Send audio to your Modal ASR API
       const formData = new FormData();
       formData.append("audio", audio);
 
@@ -31,14 +97,15 @@ export default function Home() {
       const asrData = await asrRes.json();
 
       if (!asrRes.ok || !asrData.transcription) {
-        throw new Error(asrData.error || "ASR transcription failed");
+        throw new Error(
+          asrData.error || "ASR transcription failed"
+        );
       }
 
       const text = asrData.transcription;
 
       setTranscript(text);
 
-      // 2. Send transcription to Gemini API route
       const geminiRes = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -52,7 +119,9 @@ export default function Home() {
       const geminiData = await geminiRes.json();
 
       if (!geminiRes.ok) {
-        throw new Error(geminiData.error || "Gemini request failed");
+        throw new Error(
+          geminiData.error || "Gemini request failed"
+        );
       }
 
       setResponse(
@@ -80,8 +149,30 @@ export default function Home() {
       <h1>Balochi Voice Assistant</h1>
 
       <p>
-        Upload a Balochi audio recording and receive a Balochi response.
+        Speak in Balochi or upload an audio recording.
       </p>
+
+      <h3>Record your voice</h3>
+
+      {!recording ? (
+        <button onClick={startRecording}>
+          🎤 Start Recording
+        </button>
+      ) : (
+        <button onClick={stopRecording}>
+          ⏹ Stop Recording
+        </button>
+      )}
+
+      {recording && (
+        <p>
+          🔴 Recording...
+        </p>
+      )}
+
+      <hr style={{ margin: "30px 0" }} />
+
+      <h3>Or upload audio</h3>
 
       <input
         type="file"
@@ -91,14 +182,23 @@ export default function Home() {
         }
       />
 
-      <br />
-      <br />
+      {audio && (
+        <p>
+          Selected audio: {audio.name}
+        </p>
+      )}
 
       <button
         onClick={handleAudio}
-        disabled={!audio || loading}
+        disabled={!audio || loading || recording}
+        style={{
+          marginTop: 20,
+          padding: "10px 20px",
+        }}
       >
-        {loading ? "Processing..." : "Ask"}
+        {loading
+          ? "Processing..."
+          : "Ask Balochi Assistant"}
       </button>
 
       {transcript && (
@@ -108,7 +208,6 @@ export default function Home() {
           <div
             dir="rtl"
             style={{
-              marginTop: 10,
               padding: 15,
               border: "1px solid #ccc",
               borderRadius: 8,
@@ -126,7 +225,6 @@ export default function Home() {
           <div
             dir="rtl"
             style={{
-              marginTop: 10,
               padding: 15,
               border: "1px solid #ccc",
               borderRadius: 8,
